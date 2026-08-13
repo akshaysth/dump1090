@@ -356,6 +356,7 @@ function initialize() {
 
         // Initialize other controls
         initializeUnitsSelector();
+        initializeAirlineLogoTooltip();
 
         // check if the altitude color values are default to enable the altitude filter
         if (ColorByAlt.air.h.length === 3 && ColorByAlt.air.h[0].alt === 2000 && ColorByAlt.air.h[0].val === 20 && ColorByAlt.air.h[1].alt === 10000 && ColorByAlt.air.h[1].val === 140 && ColorByAlt.air.h[2].alt === 40000 && ColorByAlt.air.h[2].val === 300) {
@@ -1728,6 +1729,16 @@ function refreshTableInfo() {
                         } else {
 				tableplane.tr.cells[2].innerHTML = "";
 				tableplane.tr.cells[2].className = "";
+			}
+
+			// Operator data for the airline logo tooltip (see operators.js)
+			var operator = resolveOperator(tableplane);
+			if (operator !== null) {
+				tableplane.tr.setAttribute("data-operator-icao", operator.icao);
+				tableplane.tr.setAttribute("data-operator-name", operator.name);
+			} else {
+				tableplane.tr.removeAttribute("data-operator-icao");
+				tableplane.tr.removeAttribute("data-operator-name");
 			}
 
                         tableplane.tr.cells[3].textContent = (tableplane.registration !== null ? tableplane.registration : "");

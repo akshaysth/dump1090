@@ -109,6 +109,25 @@ ShowFlags = true;
 // Path to country flags (can be a relative or absolute URL; include a trailing /)
 FlagPath = "flags-tiny/";
 
+// -- Airline logo settings -------------------------------------
+// When enabled, hovering over an aircraft's ident in the aircraft
+// table shows the operator's logo in a fixed-size tooltip.
+
+// Set to true to enable airline logos in the aircraft table.
+AirlineLogosEnabled = true;
+
+// URL template for the operator logo image. {icao} is replaced with
+// the operator's ICAO airline designator (e.g. "UAL").
+AirlineLogoUrlTemplate = "https://www.flightaware.com/images/airline_logos/180px/{icao}.png";
+
+// Optional local logo cache server. When set, logos are requested
+// from <AirlineLogoCacheUrl>/logos/<icao>.png and the cache server is
+// responsible for fetching from AirlineLogoUrlTemplate on first
+// request and storing the image locally. Leave empty to fetch logos
+// directly from AirlineLogoUrlTemplate. A reference cache server is
+// provided in tools/logo-cache-proxy.py.
+AirlineLogoCacheUrl = "";
+
 // Set to true to enable the FAA base layers (US coverage only)
 FAALayers = true;
 

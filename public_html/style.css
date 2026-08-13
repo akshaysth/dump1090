@@ -1332,3 +1332,35 @@ label.sourceCheckboxChecked div.sourceCheckbox {
         height: calc(90vh - 60px);
     }
 }
+
+/* Airline logo tooltip (see operators.js) */
+.airline-logo-tooltip {
+    position: fixed;
+    z-index: 2000;
+    width: 132px;
+    padding: 8px;
+    background-color: #002f5d;
+    color: #ffffff;
+    border: 1px solid #ffffff;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    text-align: center;
+    pointer-events: none;
+}
+
+.airline-logo-tooltip img {
+    display: block;
+    width: 110px;
+    height: 110px;
+    object-fit: contain;
+    margin: 0 auto 6px auto;
+    background-color: #ffffff;
+    border-radius: 2px;
+}
+
+.airline-logo-tooltip .airline-operator-name {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 11px;
+    line-height: 1.3;
+    word-wrap: break-word;
+}

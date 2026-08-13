@@ -1,0 +1,18 @@
+[Unit]
+Description=dump1090 airline logo cache proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/dump1090-airline-logo-cache.py --port 8001
+# systemd creates and owns /var/cache/dump1090-airline-logos for the
+# service user (matches the script's default --cache-dir).
+CacheDirectory=dump1090-airline-logos
+User=nobody
+Group=nogroup
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
