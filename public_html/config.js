@@ -128,6 +128,17 @@ AirlineLogoUrlTemplate = "https://www.flightaware.com/images/airline_logos/180px
 // provided in tools/logo-cache-proxy.py.
 AirlineLogoCacheUrl = "";
 
+// -- Airline route settings --------------------------------------
+// When enabled, the departure and arrival airports of a flight are
+// resolved from its callsign and shown in the aircraft table and the
+// map info cards. Routes are requested from the route cache server
+// (tools/logo-cache-proxy.py, which proxies the public adsbdb route
+// API) at <AirlineLogoCacheUrl>/route/<callsign>; without a cache
+// server the requests fail quietly and no routes are shown.
+
+// Set to true to enable departure/arrival route resolution.
+AirlineRoutesEnabled = true;
+
 // Set to true to enable the FAA base layers (US coverage only)
 FAALayers = true;
 

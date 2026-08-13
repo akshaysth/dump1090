@@ -71,6 +71,8 @@ var checkbox_div_map = new Map ([
         ['#icao_col_checkbox', '#icao'],
         ['#flag_col_checkbox', '#flag'],
         ['#ident_col_checkbox', '#flight'],
+        ['#dep_col_checkbox', '#departure'],
+        ['#arr_col_checkbox', '#arrival'],
         ['#reg_col_checkbox', '#registration'],
         ['#ac_col_checkbox', '#aircraft_type'],
         ['#squawk_col_checkbox', '#squawk'],
@@ -904,7 +906,7 @@ function initialize_map() {
 		}
         } else {
 	        SitePosition = null;
-                PlaneRowTemplate.cells[9].style.display = 'none'; // hide distance column
+                PlaneRowTemplate.cells[11].style.display = 'none'; // hide distance column
                 document.getElementById("distance").style.display = 'none'; // hide distance header
                 if (groupByDataTypeBox === 'deselected') {
 			sortByAltitude();
@@ -1361,6 +1363,15 @@ function refreshSelected() {
                 $('#selected_registration').text("n/a");
         }
 
+        var selectedRoute = getRouteForFlight(selected.flight);
+        if (selectedRoute !== null) {
+                $('#selected_departure').text(selectedRoute.dep);
+                $('#selected_arrival').text(selectedRoute.arr);
+        } else {
+                $('#selected_departure').text("n/a");
+                $('#selected_arrival').text("n/a");
+        }
+
         if (selected.icaotype !== null) {
                 $('#selected_icaotype').text(selected.icaotype);
         } else {
@@ -1655,6 +1666,15 @@ function refreshHighlighted() {
 		$('#highlighted_registration').text("n/a");
 	}
 
+	var highlightedRoute = getRouteForFlight(highlighted.flight);
+	if (highlightedRoute !== null) {
+		$('#highlighted_departure').text(highlightedRoute.dep);
+		$('#highlighted_arrival').text(highlightedRoute.arr);
+	} else {
+		$('#highlighted_departure').text("n/a");
+		$('#highlighted_arrival').text("n/a");
+	}
+
 	$('#highlighted_speed').text(format_speed_long(highlighted.speed, DisplayUnits));
 
 	$("#highlighted_altitude").text(format_altitude_long(highlighted.altitude, highlighted.vert_rate, DisplayUnits));
@@ -1745,23 +1765,28 @@ function refreshTableInfo() {
 				tableplane.tr.removeAttribute("data-operator-name");
 			}
 
-                        tableplane.tr.cells[3].textContent = (tableplane.registration !== null ? tableplane.registration : "");
-                        tableplane.tr.cells[4].textContent = (tableplane.icaotype !== null ? tableplane.icaotype : "");
-                        tableplane.tr.cells[5].textContent = (tableplane.squawk !== null ? tableplane.squawk : "");
-                        tableplane.tr.cells[6].innerHTML = format_altitude_brief(tableplane.altitude, tableplane.vert_rate, DisplayUnits);
-                        tableplane.tr.cells[7].textContent = format_speed_brief(tableplane.gs, DisplayUnits);
-                        tableplane.tr.cells[8].textContent = format_vert_rate_brief(tableplane.vert_rate, DisplayUnits);
-                        tableplane.tr.cells[9].textContent = format_distance_brief(tableplane.sitedist, DisplayUnits);
-                        tableplane.tr.cells[10].textContent = format_track_brief(tableplane.track);
-                        tableplane.tr.cells[11].textContent = tableplane.messages;
-                        tableplane.tr.cells[12].textContent = tableplane.seen.toFixed(0);
-                        tableplane.tr.cells[13].textContent = (tableplane.rssi !== null ? tableplane.rssi : "");
-                        tableplane.tr.cells[14].textContent = (tableplane.position !== null ? tableplane.position[1].toFixed(4) : "");
-                        tableplane.tr.cells[15].textContent = (tableplane.position !== null ? tableplane.position[0].toFixed(4) : "");
-                        tableplane.tr.cells[16].textContent = format_data_source(tableplane.getDataSource());
-                        tableplane.tr.cells[17].innerHTML = getAirframesModeSLink(tableplane.icao);
-                        tableplane.tr.cells[18].innerHTML = getFlightAwareModeSLink(tableplane.icao, tableplane.flight);
-                        tableplane.tr.cells[19].innerHTML = getFlightAwarePhotoLink(tableplane.registration);
+			// Route data for the departure/arrival columns (see routes.js)
+			var route = getRouteForFlight(tableplane.flight);
+			tableplane.tr.cells[3].textContent = (route !== null ? route.dep : "");
+			tableplane.tr.cells[4].textContent = (route !== null ? route.arr : "");
+
+                        tableplane.tr.cells[5].textContent = (tableplane.registration !== null ? tableplane.registration : "");
+                        tableplane.tr.cells[6].textContent = (tableplane.icaotype !== null ? tableplane.icaotype : "");
+                        tableplane.tr.cells[7].textContent = (tableplane.squawk !== null ? tableplane.squawk : "");
+                        tableplane.tr.cells[8].innerHTML = format_altitude_brief(tableplane.altitude, tableplane.vert_rate, DisplayUnits);
+                        tableplane.tr.cells[9].textContent = format_speed_brief(tableplane.gs, DisplayUnits);
+                        tableplane.tr.cells[10].textContent = format_vert_rate_brief(tableplane.vert_rate, DisplayUnits);
+                        tableplane.tr.cells[11].textContent = format_distance_brief(tableplane.sitedist, DisplayUnits);
+                        tableplane.tr.cells[12].textContent = format_track_brief(tableplane.track);
+                        tableplane.tr.cells[13].textContent = tableplane.messages;
+                        tableplane.tr.cells[14].textContent = tableplane.seen.toFixed(0);
+                        tableplane.tr.cells[15].textContent = (tableplane.rssi !== null ? tableplane.rssi : "");
+                        tableplane.tr.cells[16].textContent = (tableplane.position !== null ? tableplane.position[1].toFixed(4) : "");
+                        tableplane.tr.cells[17].textContent = (tableplane.position !== null ? tableplane.position[0].toFixed(4) : "");
+                        tableplane.tr.cells[18].textContent = format_data_source(tableplane.getDataSource());
+                        tableplane.tr.cells[19].innerHTML = getAirframesModeSLink(tableplane.icao);
+                        tableplane.tr.cells[20].innerHTML = getFlightAwareModeSLink(tableplane.icao, tableplane.flight);
+                        tableplane.tr.cells[21].innerHTML = getFlightAwarePhotoLink(tableplane.registration);
                         tableplane.tr.className = classes;
                 }
         }
@@ -1797,6 +1822,8 @@ function compareNumeric(xf,yf) {
 function sortByICAO()     { sortBy('icao',    compareAlpha,   function(x) { return x.icao; }); }
 function sortByFlight()   { sortBy('flight',  compareAlpha,   function(x) { return x.flight ? x.flight : x.registration; }); }
 function sortByRegistration()   { sortBy('registration',    compareAlpha,   function(x) { return x.registration; }); }
+function sortByDeparture()      { sortBy('departure',       compareAlpha,   function(x) { var r = getRouteForFlight(x.flight); return r !== null ? r.dep : null; }); }
+function sortByArrival()        { sortBy('arrival',         compareAlpha,   function(x) { var r = getRouteForFlight(x.flight); return r !== null ? r.arr : null; }); }
 function sortByAircraftType()   { sortBy('icaotype',        compareAlpha,   function(x) { return x.icaotype; }); }
 function sortBySquawk()   { sortBy('squawk',  compareAlpha,   function(x) { return x.squawk; }); }
 function sortByAltitude() { sortBy('altitude',compareNumeric, function(x) { return (x.altitude == "ground" ? -1e9 : x.altitude); }); }
@@ -2140,6 +2167,8 @@ function setColumnVisibility() {
         '#icao_col_checkbox',
         '#flag_col_checkbox',
         '#ident_col_checkbox',
+        '#dep_col_checkbox',
+        '#arr_col_checkbox',
         '#squawk_col_checkbox',
         '#alt_col_checkbox',
         '#speed_col_checkbox',

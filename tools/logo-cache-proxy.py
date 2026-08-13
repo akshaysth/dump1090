@@ -27,7 +27,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Local cache server for airline operator logos.
+"""Local cache server for airline operator logos and flight routes.
 
 Endpoints:
   GET /logos/<ICAO>.png   the logo for operator ICAO, fetched from the
@@ -35,6 +35,11 @@ Endpoints:
                           disk afterwards. 404 responses are also cached
                           (briefly) so unknown operators are not refetched
                           on every hover.
+  GET /route/<callsign>   the departure/arrival airports of a flight,
+                          fetched from the public adsbdb route API on
+                          first request and cached on disk (24h by
+                          default). Unknown routes are cached briefly so
+                          they are not refetched on every refresh.
   GET /health             returns 200 when the server is up.
 
 Install (systemd):
@@ -44,10 +49,12 @@ Install (systemd):
   systemctl enable --now dump1090-airline-logo-cache
 
 Then set AirlineLogoCacheUrl in public_html/config.js to the server's
-base URL, e.g. "http://172.16.1.135:8001".
+base URL, e.g. "http://172.16.1.135:8001". Routes are served from the
+same base URL and are enabled by AirlineRoutesEnabled.
 """
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -61,17 +68,23 @@ DEFAULT_TEMPLATE = "https://www.flightaware.com/images/airline_logos/180px/{icao
 DEFAULT_CACHE_DIR = "/var/cache/dump1090-airline-logos"
 CLIENT_CACHE_SECONDS = 86400      # how long browsers may reuse a response
 DEFAULT_404_TTL_SECONDS = 7 * 86400  # retry unknown operators after this
+ROUTE_TEMPLATE = "https://api.adsbdb.com/v0/callsign/{callsign}"
+DEFAULT_ROUTE_TTL_SECONDS = 24 * 3600  # revalidate routes after this
+ROUTE_CLIENT_CACHE_SECONDS = 3600  # how long browsers may reuse a route
 # Some logo hosts reject library user agents; use a browser-like one.
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
 
 class LogoCacheServer(ThreadingHTTPServer):
-    def __init__(self, address, handler, cache_dir, logo_template, max_age_seconds, not_found_ttl_seconds):
+    def __init__(self, address, handler, cache_dir, logo_template, max_age_seconds,
+                 not_found_ttl_seconds, route_template, route_ttl_seconds):
         super().__init__(address, handler)
         self.cache_dir = cache_dir
         self.logo_template = logo_template
         self.max_age_seconds = max_age_seconds
         self.not_found_ttl_seconds = not_found_ttl_seconds
+        self.route_template = route_template
+        self.route_ttl_seconds = route_ttl_seconds
 
 
 class LogoCacheHandler(BaseHTTPRequestHandler):
@@ -92,6 +105,10 @@ class LogoCacheHandler(BaseHTTPRequestHandler):
 
         match = re.fullmatch(r"/logos/([A-Za-z0-9]{2,4})\.png", self.path)
         if match is None:
+            match = re.fullmatch(r"/route/([A-Za-z0-9]{3,10})", self.path)
+            if match is not None:
+                self.serve_route(match.group(1).upper())
+                return
             self.send_response(404)
             self.end_headers()
             return
@@ -151,6 +168,80 @@ class LogoCacheHandler(BaseHTTPRequestHandler):
 
         self._write_atomic(cache_file, data)
         self._send_bytes(data, "MISS")
+
+    def serve_route(self, callsign):
+        os.makedirs(self.cache_server.cache_dir, exist_ok=True)
+        cache_file = os.path.join(self.cache_server.cache_dir, callsign + ".route.json")
+        miss_file = os.path.join(self.cache_server.cache_dir, callsign + ".route.404")
+
+        # Serve from cache when present and not expired.
+        if os.path.exists(cache_file) and self._is_fresh(cache_file, self.cache_server.route_ttl_seconds):
+            self._send_route_file(cache_file, "HIT")
+            return
+
+        # Short-circuit known-unknown routes (404 marker still fresh).
+        if os.path.exists(miss_file) and self._is_fresh(miss_file, self.cache_server.route_ttl_seconds):
+            self._send_route_404("HIT (404)")
+            return
+
+        url = self.cache_server.route_template.replace("{callsign}", callsign)
+        request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                data = json.loads(response.read().decode("utf-8", "replace"))
+        except urllib.error.HTTPError as error:
+            if error.code == 404:
+                self._mark_missing(miss_file)
+                self._send_route_404("MISS (404)")
+                return
+            self._server_error("route upstream error: %s" % error.code)
+            return
+        except Exception as error:  # network errors, timeouts, bad JSON
+            self._server_error("route upstream error: %s" % error)
+            return
+
+        flightroute = (data.get("response") or {}).get("flightroute") or {}
+        origin = flightroute.get("origin") or {}
+        destination = flightroute.get("destination") or {}
+        dep = origin.get("icao_code")
+        arr = destination.get("icao_code")
+        if not dep or not arr:
+            self._mark_missing(miss_file)
+            self._send_route_404("MISS (incomplete)")
+            return
+
+        payload = json.dumps({"dep": dep, "arr": arr}).encode("utf-8")
+        if os.path.exists(miss_file):
+            try:
+                os.remove(miss_file)
+            except OSError:
+                pass
+        self._write_atomic(cache_file, payload)
+        self._send_route_bytes(payload, "MISS")
+
+    def _send_route_file(self, path, cache_state):
+        try:
+            with open(path, "rb") as handle:
+                data = handle.read()
+        except OSError:
+            self._server_error("route cache read error")
+            return
+        self._send_route_bytes(data, cache_state)
+
+    def _send_route_bytes(self, data, cache_state):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "public, max-age=%d" % ROUTE_CLIENT_CACHE_SECONDS)
+        self.send_header("X-Cache", cache_state)
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _send_route_404(self, cache_state):
+        self.send_response(404)
+        self.send_header("Cache-Control", "public, max-age=%d" % ROUTE_CLIENT_CACHE_SECONDS)
+        self.send_header("X-Cache", cache_state)
+        self.end_headers()
 
     def _is_fresh(self, path, ttl_seconds):
         if ttl_seconds <= 0:
@@ -219,10 +310,15 @@ def main():
                         help="revalidate cached logos after this many seconds (0 = never, default)")
     parser.add_argument("--not-found-ttl", type=int, default=DEFAULT_404_TTL_SECONDS,
                         help="remember unknown operators for this many seconds (default: %d)" % DEFAULT_404_TTL_SECONDS)
+    parser.add_argument("--route-template", default=ROUTE_TEMPLATE,
+                        help="URL template for routes; {callsign} is replaced (default: adsbdb)")
+    parser.add_argument("--route-ttl", type=int, default=DEFAULT_ROUTE_TTL_SECONDS,
+                        help="revalidate cached routes after this many seconds (default: %d)" % DEFAULT_ROUTE_TTL_SECONDS)
     args = parser.parse_args()
 
     server = LogoCacheServer((args.host, args.port), LogoCacheHandler,
-                            args.cache_dir, args.logo_template, args.max_age, args.not_found_ttl)
+                            args.cache_dir, args.logo_template, args.max_age, args.not_found_ttl,
+                            args.route_template, args.route_ttl)
 
     os.makedirs(args.cache_dir, exist_ok=True)
     print("logo cache server on http://%s:%d (cache: %s)" % (args.host, args.port, args.cache_dir))

@@ -68,6 +68,21 @@ Callsigns that are aircraft registrations (e.g. Canadian `CFAKD` or US
 `N554JM`, broadcast without the hyphen) are excluded via
 `AirlineRegistrationPatterns` so they never resolve to an operator.
 
+### Flight routes (departure / arrival)
+
+The departure and arrival ICAO airport codes of a flight are resolved
+from its callsign and shown in the aircraft table (Departure/Arrival
+columns, enabled by default and toggleable in the column settings) and
+in the map info cards.
+
+Routes are requested from the route cache server at
+`<AirlineLogoCacheUrl>/route/<callsign>` -- the same
+`tools/logo-cache-proxy.py` server that caches logos, proxying the
+public adsbdb route API (`https://api.adsbdb.com/v0/callsign/<callsign>`)
+with 24h disk caching. Without a cache server the requests fail quietly
+and no routes are shown. Disable entirely with `AirlineRoutesEnabled`
+in config.js.
+
 Logos are fetched from the URL in `AirlineLogoUrlTemplate` (config.js),
 with `{icao}` replaced by the operator's ICAO designator.
 

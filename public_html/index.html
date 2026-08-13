@@ -28,6 +28,7 @@
 		<script type="text/javascript" src="flags.js?v=10.0"></script>
 		<script type="text/javascript" src="layers.js?v=10.0"></script>
 		<script type="text/javascript" src="operators.js?v=10.0"></script>
+		<script type="text/javascript" src="routes.js?v=10.0"></script>
 		<script type="text/javascript" src="script.js?v=10.0"></script>
 		<title>PiAware SkyAware</title>
 	</head>
@@ -91,6 +92,14 @@
 					<div class="infoRow">
 						<div class="infoHeading infoRowTitle">Registration: </div>
 						<div class="infoData infoRowContent"><span id="highlighted_registration">n/a</span></div>
+					</div>
+					<div class="infoRow">
+						<div class="infoHeading infoRowTitle">Departure: </div>
+						<div class="infoData infoRowContent"><span id="highlighted_departure">n/a</span></div>
+					</div>
+					<div class="infoRow">
+						<div class="infoHeading infoRowTitle">Arrival: </div>
+						<div class="infoData infoRowContent"><span id="highlighted_arrival">n/a</span></div>
 					</div>
 					<div class="infoRow">
 						<div class="infoHeading infoRowTitle">Aircraft Type: </div>
@@ -321,6 +330,14 @@
 												<div class="columnOptionText">Ident</div>
 											</div>
 											<div class="columnOptionContainer">
+												<div class="columnSelectCheckbox" id="dep_col_checkbox"></div>
+												<div class="columnOptionText">Departure</div>
+											</div>
+											<div class="columnOptionContainer">
+												<div class="columnSelectCheckbox" id="arr_col_checkbox"></div>
+												<div class="columnOptionText">Arrival</div>
+											</div>
+											<div class="columnOptionContainer">
 												<div class="columnSelectCheckbox" id="reg_col_checkbox"></div>
 												<div class="columnOptionText">Registration</div>
 											</div>
@@ -399,6 +416,8 @@
 													<td id="icao" onclick="sortByICAO();">ICAO</td>
 													<td id="flag" onclick="sortByCountry()"><!-- column for flag image --></td>
 													<td id="flight" onclick="sortByFlight();">  Ident  </td>
+													<td id="departure" onclick="sortByDeparture();">Dep</td>
+													<td id="arrival" onclick="sortByArrival();">Arr</td>
 													<td id="registration" onclick="sortByRegistration();">Registration</td>
 													<td id="aircraft_type" onclick="sortByAircraftType();"> Aircraft type</td>
 													<td id="squawk" onclick="sortBySquawk();">Squawk</td>
@@ -423,6 +442,8 @@
 													<td class="icaoCodeColumn">ICAO</td>
 													<td><img style="width: 20px; height: 12px" src="about:blank" alt="Flag"></td>
 													<td>FLIGHT</td>
+													<td>DEPARTURE</td>
+													<td>ARRIVAL</td>
 													<td>REGISTRATION</td>
 													<td>AIRCRAFT_TYPE</td>
 													<td style="text-align: right">SQUAWK</td>
@@ -497,6 +518,14 @@
 									<div class="infoRow removePadding">
 										<div class="infoHeading infoRowFluid"><span title="The alphanumeric registration code assigned by the country in which the aircraft is registered.">Registration</span>: </div>
 										<div class="infoData infoRowFluid"><span id="selected_registration">n/a</span></div>
+									</div>
+									<div class="infoRow removePadding">
+										<div class="infoHeading infoRowFluid"><span title="The ICAO code of the departure airport.">Departure</span>: </div>
+										<div class="infoData infoRowFluid"><span id="selected_departure">n/a</span></div>
+									</div>
+									<div class="infoRow removePadding">
+										<div class="infoHeading infoRowFluid"><span title="The ICAO code of the arrival airport.">Arrival</span>: </div>
+										<div class="infoData infoRowFluid"><span id="selected_arrival">n/a</span></div>
 									</div>
 									<div id="infoblock_country" class="infoRow removePadding">
 										<div class="infoHeading infoRowFluid">Country of registration: </div>
