@@ -156,6 +156,24 @@ function run_tests() {
 
     document.body.removeChild(cell);
 
+    // Map info card logos (setOperatorLogo).
+    var cardImg = document.createElement("img");
+    cardImg.className = "operator-logo-card";
+    document.body.appendChild(cardImg);
+    setOperatorLogo(cardImg, null);
+    check(cardImg.style.display === "none", "card logo hidden when no operator");
+    setOperatorLogo(cardImg, { icao: "UAL", name: "United Airlines" });
+    check(cardImg.style.display === "inline-block", "card logo visible when operator resolves");
+    check(cardImg.src === "https://example.test/logos/UAL.png", "card logo src set from template");
+    cardImg.dispatchEvent(new Event("error"));
+    check(cardImg.style.display === "none", "card logo hidden after load error");
+    check(cardImg.dataset.failed === "https://example.test/logos/UAL.png", "card logo remembers failed URL");
+    setOperatorLogo(cardImg, { icao: "UAL", name: "United Airlines" });
+    check(cardImg.style.display === "none", "failed card logo stays hidden on refresh (no broken-image flash)");
+    setOperatorLogo(cardImg, { icao: "ACA", name: "Air Canada" });
+    check(cardImg.src === "https://example.test/logos/ACA.png", "card logo switches src when operator changes");
+    document.body.removeChild(cardImg);
+
     print_results();
 }
 

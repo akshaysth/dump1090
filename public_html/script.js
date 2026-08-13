@@ -1348,8 +1348,10 @@ function refreshSelected() {
       
         if (selected.flight !== null && selected.flight !== "") {
                 $('#selected_callsign').text(selected.flight);
+                setOperatorLogo(document.getElementById("selected_operator_logo"), resolveOperator(selected));
         } else {
                 $('#selected_callsign').text('n/a');
+                setOperatorLogo(document.getElementById("selected_operator_logo"), null);
         }
         $('#selected_flightaware_link').html(getFlightAwareModeSLink(selected.icao, selected.flight, "Visit Flight Page"));
 
@@ -1658,6 +1660,8 @@ function refreshHighlighted() {
 	$("#highlighted_altitude").text(format_altitude_long(highlighted.altitude, highlighted.vert_rate, DisplayUnits));
 
 	$('#highlighted_icao').text(highlighted.icao.toUpperCase());
+
+	setOperatorLogo(document.getElementById("highlighted_operator_logo"), resolveOperator(highlighted));
 
 }
 

@@ -6037,6 +6037,31 @@ function getAirlineLogoUrl(icao) {
     return "";
 }
 
+// Update a logo image element (e.g. in the map info cards) for an
+// operator. The image is hidden when there is no operator, no logo URL
+// is configured, or the logo failed to load before (so a missing logo
+// does not flash back as a broken image on every refresh).
+function setOperatorLogo(img, operator) {
+    if (img === null || img === undefined) {
+        return;
+    }
+    if (operator === null || operator === undefined) {
+        img.style.display = "none";
+        return;
+    }
+    var url = getAirlineLogoUrl(operator.icao);
+    if (url.length === 0 || img.dataset.failed === url) {
+        img.style.display = "none";
+        return;
+    }
+    img.onerror = function () {
+        img.dataset.failed = url;
+        img.style.display = "none";
+    };
+    img.src = url;
+    img.style.display = "inline-block";
+}
+
 // ---------------------------------------------------------------------
 // Hover tooltip
 
