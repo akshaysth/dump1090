@@ -54,9 +54,19 @@ The operator is resolved in two layers:
     standard dump1090 database does not carry operator data yet; when it
     does, set `operatorIcao` / `operatorName` on the PlaneObject and it
     wins), then
- 2. the callsign prefix, matched against the table of ICAO airline
-    designators in `operators.js` (`AirlineOperators`). Add entries for
-    operators you see in your area.
+ 2. the callsign prefix, matched against the ICAO designator table in
+    `operators.js` (`AirlineOperators`), generated from the Wikipedia
+    "List of airline codes" by `tools/update-airline-operators.py`.
+    Curated display-name fixes and local additions go in
+    `AirlineOperatorOverrides`; regenerate the table with:
+
+```sh
+tools/update-airline-operators.py
+```
+
+Callsigns that are aircraft registrations (e.g. Canadian `CFAKD` or US
+`N554JM`, broadcast without the hyphen) are excluded via
+`AirlineRegistrationPatterns` so they never resolve to an operator.
 
 Logos are fetched from the URL in `AirlineLogoUrlTemplate` (config.js),
 with `{icao}` replaced by the operator's ICAO designator.

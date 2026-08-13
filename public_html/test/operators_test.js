@@ -45,13 +45,43 @@ function run_tests() {
     check(op !== null && op.icao === "ACA" && op.name === "Air Canada", "lowercase 'aca855' -> Air Canada");
 
     op = operatorFromCallsign("KLM10A");
-    check(op !== null && op.icao === "KLM", "'KLM10A' -> KLM");
+    check(op !== null && op.icao === "KLM" && op.name === "KLM Royal Dutch Airlines", "'KLM10A' -> KLM Royal Dutch Airlines (override wins)");
+
+    op = operatorFromCallsign("GEC814");
+    check(op !== null && op.icao === "GEC" && op.name === "Lufthansa Cargo", "'GEC814' -> Lufthansa Cargo");
+
+    op = operatorFromCallsign("CNS12");
+    check(op !== null && op.icao === "CNS" && op.name === "Cobalt Air LLC", "'CNS12' -> Cobalt Air LLC");
+
+    op = operatorFromCallsign("TOR801");
+    check(op !== null && op.icao === "TOR" && op.name === "FlyGTA Airlines", "'TOR801' -> FlyGTA Airlines");
+
+    op = operatorFromCallsign("LXJ202");
+    check(op !== null && op.icao === "LXJ" && op.name === "Flexjet", "'LXJ202' -> Flexjet (curated override beats generated name)");
 
     op = operatorFromCallsign("N925MP");
     check(op === null, "registration-as-callsign 'N925MP' -> null");
 
+    op = operatorFromCallsign("N554JM");
+    check(op === null, "N-number 'N554JM' -> null (registration guard)");
+
+    op = operatorFromCallsign("CFAKD");
+    check(op === null, "Canadian registration 'CFAKD' -> null (registration guard)");
+
+    op = operatorFromCallsign("CFKUL");
+    check(op === null, "Canadian registration 'CFKUL' -> null (registration guard)");
+
+    op = operatorFromCallsign("CGJOJ");
+    check(op === null, "Canadian registration 'CGJOJ' -> null (registration guard)");
+
     op = operatorFromCallsign("CFHHD578");
     check(op === null, "unknown prefix 'CFHHD578' -> null");
+
+    op = operatorFromCallsign("CFC100");
+    check(op !== null && op.icao === "CFC" && op.name === "Canadian Forces", "'CFC100' -> Canadian Forces (military callsign not blocked)");
+
+    op = operatorFromCallsign("NOZ101");
+    check(op !== null && op.icao === "NOZ" && op.name === "Norwegian Air Shuttle", "'NOZ101' -> Norwegian Air Shuttle (N-designator not blocked)");
 
     op = operatorFromCallsign("12345");
     check(op === null, "numeric callsign -> null");
@@ -61,6 +91,16 @@ function run_tests() {
 
     op = operatorFromCallsign(null);
     check(op === null, "null callsign -> null");
+
+    // Two-letter-plus-digit designators (ICAO 8585 form, e.g. "ZZ9").
+    AirlineOperatorOverrides["ZZ9"] = "Test Niner Air";
+    op = operatorFromCallsign("ZZ9123");
+    check(op !== null && op.icao === "ZZ9" && op.name === "Test Niner Air", "2L+1D designator 'ZZ9123' -> Test Niner Air");
+    op = operatorFromCallsign("ZZ9XY");
+    check(op === null, "letter after designator 'ZZ9XY' -> null (not designator + flight number)");
+    delete AirlineOperatorOverrides["ZZ9"];
+    op = operatorFromCallsign("ZZ9123");
+    check(op === null, "unknown 2L+1D designator 'ZZ9123' -> null after removal");
 
     // Layered resolution: database operator wins over callsign prefix.
     op = resolveOperator({ flight: "UAL1234", operatorIcao: "DAL", operatorName: "Delta Air Lines" });
