@@ -1676,3 +1676,33 @@ body.dark-mode ::-webkit-scrollbar-thumb {
     background: #444444;
     border-radius: 5px;
 }
+
+body.dark-mode #dump1090_infoblock dl {
+    color: #d0d0d0;
+}
+
+/* Links: default browser blue is unreadable on dark backgrounds */
+body.dark-mode a {
+    color: #6db3f2;
+}
+
+body.dark-mode a:visited {
+    color: #9d8ce0;
+}
+
+body.dark-mode #skyaware_version a {
+    color: #6db3f2;
+}
+
+body.dark-mode .bottom-info-text {
+    color: #d0d0d0;
+}
+
+body.dark-mode .config_button {
+    color: #1a1a1a;
+}
+
+body.dark-mode .ol-attribution ul {
+    color: #aaaaaa;
+    text-shadow: none;
+}
