@@ -210,7 +210,17 @@ class LogoCacheHandler(BaseHTTPRequestHandler):
             self._send_route_404("MISS (incomplete)")
             return
 
-        payload = json.dumps({"dep": dep, "arr": arr}).encode("utf-8")
+        # Include the airport coordinates so the client can determine
+        # the flight direction from the aircraft's track (callsigns
+        # like shuttle flights are reused for both directions).
+        payload = json.dumps({
+            "dep": dep,
+            "arr": arr,
+            "depLat": origin.get("latitude"),
+            "depLon": origin.get("longitude"),
+            "arrLat": destination.get("latitude"),
+            "arrLon": destination.get("longitude"),
+        }).encode("utf-8")
         if os.path.exists(miss_file):
             try:
                 os.remove(miss_file)

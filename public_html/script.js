@@ -1367,7 +1367,7 @@ function refreshSelected() {
                 $('#selected_registration').text("n/a");
         }
 
-        var selectedRoute = getRouteForFlight(selected.flight);
+        var selectedRoute = getRouteForPlane(selected);
         if (selectedRoute !== null) {
                 $('#selected_departure').text(selectedRoute.dep);
                 $('#selected_arrival').text(selectedRoute.arr);
@@ -1670,7 +1670,7 @@ function refreshHighlighted() {
 		$('#highlighted_registration').text("n/a");
 	}
 
-	var highlightedRoute = getRouteForFlight(highlighted.flight);
+	var highlightedRoute = getRouteForPlane(highlighted);
 	if (highlightedRoute !== null) {
 		$('#highlighted_departure').text(highlightedRoute.dep);
 		$('#highlighted_arrival').text(highlightedRoute.arr);
@@ -1770,7 +1770,7 @@ function refreshTableInfo() {
 			}
 
 			// Route data for the departure/arrival columns (see routes.js)
-			var route = getRouteForFlight(tableplane.flight);
+			var route = getRouteForPlane(tableplane);
 			tableplane.tr.cells[3].textContent = (route !== null ? route.dep : "");
 			tableplane.tr.cells[4].textContent = (route !== null ? route.arr : "");
 
@@ -1826,8 +1826,8 @@ function compareNumeric(xf,yf) {
 function sortByICAO()     { sortBy('icao',    compareAlpha,   function(x) { return x.icao; }); }
 function sortByFlight()   { sortBy('flight',  compareAlpha,   function(x) { return x.flight ? x.flight : x.registration; }); }
 function sortByRegistration()   { sortBy('registration',    compareAlpha,   function(x) { return x.registration; }); }
-function sortByDeparture()      { sortBy('departure',       compareAlpha,   function(x) { var r = getRouteForFlight(x.flight); return r !== null ? r.dep : null; }); }
-function sortByArrival()        { sortBy('arrival',         compareAlpha,   function(x) { var r = getRouteForFlight(x.flight); return r !== null ? r.arr : null; }); }
+function sortByDeparture()      { sortBy('departure',       compareAlpha,   function(x) { var r = getRouteForPlane(x); return r !== null ? r.dep : null; }); }
+function sortByArrival()        { sortBy('arrival',         compareAlpha,   function(x) { var r = getRouteForPlane(x); return r !== null ? r.arr : null; }); }
 function sortByAircraftType()   { sortBy('icaotype',        compareAlpha,   function(x) { return x.icaotype; }); }
 function sortBySquawk()   { sortBy('squawk',  compareAlpha,   function(x) { return x.squawk; }); }
 function sortByAltitude() { sortBy('altitude',compareNumeric, function(x) { return (x.altitude == "ground" ? -1e9 : x.altitude); }); }

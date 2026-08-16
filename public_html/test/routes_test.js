@@ -74,7 +74,29 @@ function run_tests() {
               "live route 'AAL1534' resolved to " + (r2 !== null ? r2.dep + "->" + r2.arr : "null"));
         check(r2 !== null && r2.dep.length === 4 && r2.arr.length === 4,
               "live route codes are 4-char ICAO codes");
+        check(r2 !== null && typeof r2.depLat === "number" && typeof r2.arrLat === "number",
+              "live route carries airport coordinates");
         check(!("AAL1534" in AirlineRouteFetching), "fetch dedup flag cleared after completion");
+
+        // Direction adjustment (shuttle flights reuse a callsign for
+        // both directions): use the live KONT->KDFW route coordinates.
+        var shuttleRoute = getRouteForFlight("AAL1534");
+        var fwd = routeBearing(shuttleRoute.depLat, shuttleRoute.depLon, shuttleRoute.arrLat, shuttleRoute.arrLon);
+        var planeForward = { flight: "AAL1534", position: [shuttleRoute.depLon, shuttleRoute.depLat], track: fwd };
+        var planeReversed = { flight: "AAL1534", position: [shuttleRoute.arrLon, shuttleRoute.arrLat], track: (fwd + 180) % 360 };
+        var rFwd = getRouteForPlane(planeForward);
+        check(rFwd !== null && rFwd.dep === shuttleRoute.dep && rFwd.arr === shuttleRoute.arr,
+              "plane tracking along route keeps dep/arr as stored");
+        var rRev = getRouteForPlane(planeReversed);
+        check(rRev !== null && rRev.dep === shuttleRoute.arr && rRev.arr === shuttleRoute.dep,
+              "plane tracking the reverse way swaps dep/arr");
+
+        // No coordinates (legacy payload) -> no adjustment.
+        AirlineRouteCache["LEGACY1"] = { dep: "KAAA", arr: "KBBB" };
+        var rLegacy = getRouteForPlane({ flight: "LEGACY1", position: [0, 0], track: 270 });
+        check(rLegacy !== null && rLegacy.dep === "KAAA" && rLegacy.arr === "KBBB",
+              "legacy route without coordinates is not adjusted");
+        delete AirlineRouteCache["LEGACY1"];
 
         // Unknown route: memoized null, no refetch.
         var u1 = getRouteForFlight("ZZZ9999");

@@ -101,7 +101,7 @@ function fetchAirlineRoute(callsign) {
         })
         .then(function (data) {
             if (data !== undefined && data !== null && typeof data.dep === "string" && typeof data.arr === "string") {
-                AirlineRouteCache[callsign] = { dep: data.dep, arr: data.arr };
+                AirlineRouteCache[callsign] = data;
             } else if (data !== undefined) {
                 AirlineRouteCache[callsign] = null;
             }
@@ -112,4 +112,52 @@ function fetchAirlineRoute(callsign) {
         .then(function () {
             delete AirlineRouteFetching[callsign];
         });
+}
+
+// Great-circle initial bearing from one coordinate to another, in
+// degrees (0-360).
+function routeBearing(lat1, lon1, lat2, lon2) {
+    var toRad = Math.PI / 180;
+    var toDeg = 180 / Math.PI;
+    var dLon = (lon2 - lon1) * toRad;
+    var y = Math.sin(dLon) * Math.cos(lat2 * toRad);
+    var x = Math.cos(lat1 * toRad) * Math.sin(lat2 * toRad) -
+            Math.sin(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.cos(dLon);
+    return (Math.atan2(y, x) * toDeg + 360) % 360;
+}
+
+// The route of a plane with the direction adjusted to match the
+// aircraft's ground track. Callsigns are reused for both directions
+// of a route (shuttle flights), so the database direction can be the
+// reverse of the actual flight. When the aircraft's track points
+// roughly along the origin-to-destination bearing the route is used
+// as stored; when it points the other way the endpoints are swapped.
+function getRouteForPlane(plane) {
+    var route = getRouteForFlight(plane.flight);
+    if (route === null) {
+        return null;
+    }
+    if (typeof route.depLat !== "number" || typeof route.arrLat !== "number") {
+        return route;
+    }
+    if (plane.position === null || plane.position === undefined) {
+        return route;
+    }
+    if (plane.track === null || plane.track === undefined) {
+        return route;
+    }
+    // plane.position is [lon, lat]
+    var forward = routeBearing(route.depLat, route.depLon, route.arrLat, route.arrLon);
+    var diff = Math.abs(((forward - plane.track) % 360 + 540) % 360 - 180);
+    if (diff > 90) {
+        return {
+            dep: route.arr,
+            arr: route.dep,
+            depLat: route.arrLat,
+            depLon: route.arrLon,
+            arrLat: route.depLat,
+            arrLon: route.depLon
+        };
+    }
+    return route;
 }

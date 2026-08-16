@@ -122,3 +122,10 @@ theme changes. The map base layer switches to the CARTO dark basemap
 with the dark theme. The choice is made in the settings panel (Theme
 selector) and remembered in local storage; the default is set by
 `Theme` in config.js ("system", "dark" or "light").
+
+Route direction: callsigns are reused for both directions of a route
+(shuttle flights), so the UI adjusts the stored route using the
+aircraft's ground track and the airports' coordinates (included in the
+route payload) -- when the aircraft is heading the reverse way, the
+departure and arrival are swapped. Routes without coordinates (older
+cache entries) are shown as stored.

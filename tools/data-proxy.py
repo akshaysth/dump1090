@@ -35,6 +35,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from typing import cast
@@ -42,6 +43,7 @@ from typing import cast
 DEFAULT_SERVE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public_html"))
 LOGO_TEMPLATE = "https://www.flightaware.com/images/airline_logos/180px/{icao}.png"
 ROUTE_TEMPLATE = "https://api.adsbdb.com/v0/callsign/{callsign}"
+DEFAULT_ROUTE_TTL_SECONDS = 24 * 3600  # revalidate cached routes after this
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
 TYPES = {
@@ -132,10 +134,12 @@ class DataProxyHandler(http.server.BaseHTTPRequestHandler):
         os.makedirs(self.proxy_server.route_cache, exist_ok=True)
         cache = os.path.join(self.proxy_server.route_cache, callsign + ".json")
         miss = os.path.join(self.proxy_server.route_cache, callsign + ".404")
-        if os.path.exists(cache):
+        ttl = self.proxy_server.route_ttl_seconds
+        now = time.time()
+        if os.path.exists(cache) and (ttl <= 0 or now - os.path.getmtime(cache) < ttl):
             self.send_bytes(200, open(cache, "rb").read(), "application/json")
             return
-        if os.path.exists(miss):
+        if os.path.exists(miss) and (ttl <= 0 or now - os.path.getmtime(miss) < ttl):
             self.send_error(404)
             return
         url = ROUTE_TEMPLATE.replace("{callsign}", callsign)
@@ -157,7 +161,16 @@ class DataProxyHandler(http.server.BaseHTTPRequestHandler):
             open(miss, "wb").close()
             self.send_error(404)
             return
-        payload = json.dumps({"dep": dep, "arr": arr}).encode("utf-8")
+        origin = flightroute.get("origin") or {}
+        destination = flightroute.get("destination") or {}
+        payload = json.dumps({
+            "dep": dep,
+            "arr": arr,
+            "depLat": origin.get("latitude"),
+            "depLon": origin.get("longitude"),
+            "arrLat": destination.get("latitude"),
+            "arrLon": destination.get("longitude"),
+        }).encode("utf-8")
         tmp = cache + ".tmp"
         with open(tmp, "wb") as handle:
             handle.write(payload)
@@ -176,12 +189,13 @@ class DataProxyHandler(http.server.BaseHTTPRequestHandler):
 
 
 class DataProxyServer(http.server.ThreadingHTTPServer):
-    def __init__(self, address, handler, serve_dir, remote, logo_cache, route_cache):
+    def __init__(self, address, handler, serve_dir, remote, logo_cache, route_cache, route_ttl_seconds):
         super().__init__(address, handler)
         self.serve_dir = serve_dir
         self.remote = remote
         self.logo_cache = logo_cache
         self.route_cache = route_cache
+        self.route_ttl_seconds = route_ttl_seconds
 
 
 def main():
@@ -196,11 +210,13 @@ def main():
                         help="logo cache directory (default: /tmp/dump1090-data-proxy-logos)")
     parser.add_argument("--route-cache", default="/tmp/dump1090-data-proxy-routes",
                         help="route cache directory (default: /tmp/dump1090-data-proxy-routes)")
+    parser.add_argument("--route-ttl", type=int, default=DEFAULT_ROUTE_TTL_SECONDS,
+                        help="revalidate cached routes after this many seconds (default: %d)" % DEFAULT_ROUTE_TTL_SECONDS)
     args = parser.parse_args()
 
     server = DataProxyServer((args.host, args.port), DataProxyHandler,
                              os.path.abspath(args.serve_dir), args.remote.rstrip("/"),
-                             args.logo_cache, args.route_cache)
+                             args.logo_cache, args.route_cache, args.route_ttl)
     print("webmap UI on http://%s:%d (files: %s)" % (args.host, args.port, server.serve_dir))
     print("data proxied from %s" % server.remote)
     try:
