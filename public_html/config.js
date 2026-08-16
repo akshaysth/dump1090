@@ -139,6 +139,16 @@ AirlineLogoCacheUrl = "";
 // Set to true to enable departure/arrival route resolution.
 AirlineRoutesEnabled = true;
 
+// -- Theme settings ----------------------------------------------
+// Color theme of the webmap (background surfaces and the map base
+// layer). "system" follows the operating system dark/light preference,
+// "dark" always uses the dark theme, "light" always uses the light
+// theme. Can be changed at runtime in the settings panel; the choice
+// is remembered in local storage.
+
+// Valid values: "system", "dark", "light".
+Theme = "system";
+
 // Set to true to enable the FAA base layers (US coverage only)
 FAALayers = true;
 

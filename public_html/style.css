@@ -1377,3 +1377,302 @@ label.sourceCheckboxChecked div.sourceCheckbox {
     border-radius: 2px;
     padding: 1px;
 }
+
+/* Dark theme -------------------------------------------------------
+   Applied via body.dark-mode (see script.js applyTheme). The theme
+   follows the Theme setting: system / dark / light. The map base
+   layer switches to the CARTO dark basemap with it. */
+
+body.dark-mode {
+    background-color: #121212;
+    color: #d0d0d0;
+}
+
+body.dark-mode #layout_container {
+    background: #121212;
+}
+
+body.dark-mode #sidebar_container,
+body.dark-mode #sidebar_canvas,
+body.dark-mode .infoblock-container {
+    background: #1a1a1a;
+}
+
+body.dark-mode #selected_infoblock {
+    background: #1a1a1a;
+}
+
+body.dark-mode #tableinfo {
+    color: #d0d0d0;
+}
+
+body.dark-mode .plane_table_row {
+    color: #d0d0d0;
+}
+
+body.dark-mode .plane_table_row.selected {
+    background-color: #2a3a4a;
+}
+
+body.dark-mode .ident_normal,
+body.dark-mode .ident_fallback {
+    color: #d0d0d0;
+}
+
+body.dark-mode .icaoCodeColumn {
+    color: #9fc3e8;
+}
+
+body.dark-mode .infoHeading {
+    color: #9fc3e8;
+}
+
+body.dark-mode .infoData {
+    color: #d0d0d0;
+}
+
+body.dark-mode .infoBlockTitleText {
+    color: #9fc3e8;
+}
+
+body.dark-mode .settingsText {
+    color: #d0d0d0;
+}
+
+body.dark-mode .settingsHeading {
+    color: #9fc3e8;
+}
+
+body.dark-mode .sectionTitle {
+    background: #002f5d;
+    color: #ffffff;
+}
+
+body.dark-mode .legend {
+    color: #d0d0d0;
+}
+
+body.dark-mode .rangeRingText {
+    color: #ffffff;
+}
+
+body.dark-mode .link,
+body.dark-mode .link a {
+    color: #5eb0e8;
+}
+
+body.dark-mode .lightblue-link,
+body.dark-mode .lightblue-link a {
+    color: #5eb0e8;
+}
+
+body.dark-mode #highlighted_infoblock {
+    background: #002f5d;
+}
+
+body.dark-mode .highlightedTitle {
+    border-bottom: 1px solid #00a0e2;
+}
+
+body.dark-mode .identLarge {
+    color: #ffffff;
+}
+
+body.dark-mode .identSmall {
+    color: #9fc3e8;
+}
+
+body.dark-mode #dump1090_infoblock {
+    background: #1a1a1a;
+}
+
+body.dark-mode .lightGreyBackground {
+    background: #222222;
+}
+
+body.dark-mode #settings_infoblock {
+    background: #1a1a1a;
+    box-shadow: 4px 4px 10px #000000;
+}
+
+body.dark-mode .panel,
+body.dark-mode #column_select_panel {
+    background: #1a1a1a;
+    border-color: #002f5d;
+}
+
+body.dark-mode .columnOptionText {
+    color: #d0d0d0;
+}
+
+body.dark-mode .dateTime {
+    color: #ffffff;
+}
+
+body.dark-mode .bottom-container {
+    background-color: #222222;
+}
+
+body.dark-mode #altitude_chart {
+    background-color: #1a1a1a;
+}
+
+body.dark-mode select,
+body.dark-mode input[type="text"],
+body.dark-mode .altitudeFilterInput,
+body.dark-mode .aircraftFilterInput,
+body.dark-mode .rangeRingsInput {
+    background-color: #2a2a2a;
+    color: #d0d0d0;
+    border: 1px solid #444444;
+}
+
+body.dark-mode .config_button {
+    background-color: #febc11;
+    color: #002f5d;
+}
+
+body.dark-mode .config_button:hover,
+body.dark-mode .config_button_active {
+    background-color: #d9a30e;
+}
+
+body.dark-mode .stats_button {
+    background-color: #00a0e2;
+    color: #ffffff;
+}
+
+body.dark-mode .button {
+    background: #00a0e2;
+    color: #ffffff;
+}
+
+body.dark-mode .sidebarButton {
+    background-color: #2a2a2a;
+    color: #d0d0d0;
+    border: 1px solid #444444;
+}
+
+body.dark-mode .sidebarButton:hover {
+    background-color: #3a3a3a;
+}
+
+body.dark-mode #close-button {
+    background: #2a2a2a;
+    color: #d0d0d0;
+}
+
+body.dark-mode .ol-control button {
+    background-color: #2a2a2a;
+    color: #ffffff;
+}
+
+body.dark-mode .ol-attribution {
+    background: rgba(0, 0, 0, 0.7);
+    color: #aaaaaa;
+}
+
+body.dark-mode .ol-attribution a {
+    color: #9fc3e8;
+}
+
+body.dark-mode .layer-switcher {
+    background: #1a1a1a;
+    color: #d0d0d0;
+}
+
+body.dark-mode .layer-switcher ul {
+    background: #1a1a1a;
+}
+
+body.dark-mode .layer-switcher li {
+    color: #d0d0d0;
+}
+
+body.dark-mode .settingsCheckboxChecked,
+body.dark-mode .settingsCheckbox {
+    background-image: url("images/box-checked.png");
+}
+
+body.dark-mode .settingsCheckbox {
+    background-image: url("images/box-empty.png");
+}
+
+body.dark-mode .columnSelectCheckbox,
+body.dark-mode .columnSelectAllCheckbox {
+    background-image: url("images/box-empty.png");
+}
+
+body.dark-mode .columnSelectCheckbox.settingsCheckboxChecked,
+body.dark-mode .columnSelectAllCheckbox.settingsCheckboxChecked {
+    background-image: url("images/box-checked.png");
+}
+
+body.dark-mode .infoRowLine {
+    border-bottom: 1px solid #333333;
+}
+
+body.dark-mode .flightawareLogo {
+    background-color: #1a1a1a;
+}
+
+body.dark-mode .plane_table_row {
+    background-color: #1a1a1a;
+}
+
+/* Data source row tints, darkened for the dark theme */
+body.dark-mode .vPosition {
+    background-color: #1e3a4d;
+}
+
+body.dark-mode .uat {
+    background-color: #1d3d2a;
+}
+
+body.dark-mode .mlat {
+    background-color: #3d3620;
+}
+
+body.dark-mode .other {
+    background-color: #2a2f45;
+}
+
+body.dark-mode .tisb {
+    background-color: #3d3a1a;
+}
+
+body.dark-mode .legendBox {
+    border: 1px solid #444444;
+}
+
+body.dark-mode .button {
+    background: #0077ad;
+}
+
+body.dark-mode .stats_button {
+    background-color: #0077ad;
+}
+
+body.dark-mode .config_button {
+    background-color: #a37a1c;
+    color: #002f5d;
+}
+
+body.dark-mode .config_button:hover,
+body.dark-mode .config_button_active {
+    background-color: #8a6618;
+}
+
+body.dark-mode ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+body.dark-mode ::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+    background: #444444;
+    border-radius: 5px;
+}

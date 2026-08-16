@@ -358,6 +358,7 @@ function initialize() {
 
         // Initialize other controls
         initializeUnitsSelector();
+        initializeThemeSelector();
         initializeAirlineLogoTooltip();
 
         // check if the altitude color values are default to enable the altitude filter
@@ -1007,6 +1008,9 @@ function initialize_map() {
                         }
                 });
         }
+
+        // Apply the selected theme to the map base layer
+        syncThemeMap(isDarkTheme());
 
         OLMap = new ol.Map({
                 target: 'map_canvas',
@@ -2274,6 +2278,105 @@ function getExtent(x, y, width, height) {
 
 function isPointInsideExtent(x, y, extent) {
     return x >= extent.xMin && x <= extent.xMax && y >= extent.yMin && y <= extent.yMax;
+}
+
+// Get the theme choice ("light", "dark" or "system") from local
+// storage, seeded from the Theme config value.
+function getTheme() {
+    var stored = localStorage.getItem('theme');
+    if (stored === null) {
+        stored = (typeof Theme !== 'undefined' && Theme === 'dark' || typeof Theme !== 'undefined' && Theme === 'light') ? Theme : 'system';
+        localStorage.setItem('theme', stored);
+    }
+    return stored;
+}
+
+// True when the UI should use the dark theme.
+function isDarkTheme() {
+    var theme = getTheme();
+    if (theme === 'dark') {
+        return true;
+    }
+    if (theme === 'light') {
+        return false;
+    }
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+// Switch a base layer of the map to visible by name, hiding the
+// others; the layer visibility change handler updates MapType and
+// local storage.
+function setBaseLayerByName(name) {
+    ol.control.LayerSwitcher.forEachRecursive(layerGroup, function (lyr) {
+        if (lyr.get('type') === 'base') {
+            lyr.setVisible(lyr.get('name') === name);
+        }
+    });
+}
+
+// Apply the theme to the UI surfaces and the map base layer.
+function applyTheme() {
+    var dark = isDarkTheme();
+    $('body').toggleClass('dark-mode', dark);
+    var selector = document.getElementById('theme_selector');
+    if (selector !== null) {
+        selector.value = getTheme();
+    }
+    syncThemeMap(dark);
+}
+
+// Keep the map base layer consistent with the theme. The dark theme
+// uses the CARTO dark basemap; the light theme restores the map the
+// user had selected before switching to dark.
+function syncThemeMap(dark) {
+    if (typeof layerGroup === 'undefined' || layerGroup === null) {
+        return;
+    }
+    var current = (typeof MapType !== 'undefined' && MapType !== null) ? MapType : '';
+    if (dark) {
+        if (current !== 'carto_dark_all' && current !== 'carto_dark_nolabels') {
+            if (current.length > 0) {
+                localStorage.setItem('lightMapType', current);
+            }
+            setBaseLayerByName('carto_dark_all');
+        }
+    } else {
+        if (current === 'carto_dark_all' || current === 'carto_dark_nolabels') {
+            var lightMap = localStorage.getItem('lightMapType');
+            setBaseLayerByName(lightMap || 'osm');
+        }
+    }
+}
+
+function initializeThemeSelector() {
+    // Initialize the drop-down
+    var themeSelector = $("#theme_selector");
+    themeSelector.val(getTheme());
+    themeSelector.on("change", onThemeChanged);
+
+    // Follow the operating system preference while in "system" mode
+    if (window.matchMedia) {
+        var darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        var onChange = function () {
+            if (getTheme() === 'system') {
+                applyTheme();
+            }
+        };
+        if (darkQuery.addEventListener) {
+            darkQuery.addEventListener('change', onChange);
+        } else if (darkQuery.addListener) {
+            darkQuery.addListener(onChange);
+        }
+    }
+
+    applyTheme();
+}
+
+function onThemeChanged(e) {
+    if (e) {
+        localStorage.setItem('theme', e.target.value);
+    }
+    applyTheme();
 }
 
 function initializeUnitsSelector() {
