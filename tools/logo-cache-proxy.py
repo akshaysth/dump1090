@@ -193,6 +193,13 @@ class LogoCacheHandler(BaseHTTPRequestHandler):
         try:
             with urllib.request.urlopen(request, timeout=20) as response:
                 html = response.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as error:
+            if error.code == 404:
+                self._mark_missing(miss_file)
+                self._send_route_404("MISS (404)")
+                return
+            self._server_error("route upstream error: %s" % error.code)
+            return
         except Exception as error:  # network errors, timeouts
             self._server_error("route upstream error: %s" % error)
             return
@@ -214,6 +221,13 @@ class LogoCacheHandler(BaseHTTPRequestHandler):
                 dep_lon = origin.get("longitude")
                 arr_lat = destination.get("latitude")
                 arr_lon = destination.get("longitude")
+            except urllib.error.HTTPError as error:
+                if error.code == 404:
+                    self._mark_missing(miss_file)
+                    self._send_route_404("MISS (404)")
+                    return
+                self._server_error("route fallback error: %s" % error.code)
+                return
             except Exception as error:
                 self._server_error("route fallback error: %s" % error)
                 return

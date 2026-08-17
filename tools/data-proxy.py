@@ -148,6 +148,14 @@ class DataProxyHandler(http.server.BaseHTTPRequestHandler):
             req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
             with urllib.request.urlopen(req, timeout=20) as response:
                 html = response.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as error:
+            if error.code == 404:
+                open(miss, "wb").close()
+                self.send_error(404)
+                return
+            sys.stderr.write("route fetch error %s: %s\n" % (callsign, error.code))
+            self.send_error(502)
+            return
         except Exception as error:
             sys.stderr.write("route fetch error %s: %s\n" % (callsign, error))
             self.send_error(502)
@@ -169,6 +177,14 @@ class DataProxyHandler(http.server.BaseHTTPRequestHandler):
                 dep_lon = origin.get("longitude")
                 arr_lat = destination.get("latitude")
                 arr_lon = destination.get("longitude")
+            except urllib.error.HTTPError as error:
+                if error.code == 404:
+                    open(miss, "wb").close()
+                    self.send_error(404)
+                    return
+                sys.stderr.write("route fallback error %s: %s\n" % (callsign, error.code))
+                self.send_error(502)
+                return
             except Exception as error:
                 sys.stderr.write("route fallback error %s: %s\n" % (callsign, error))
                 self.send_error(502)
