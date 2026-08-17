@@ -36,10 +36,12 @@ Endpoints:
                           (briefly) so unknown operators are not refetched
                           on every hover.
   GET /route/<callsign>   the departure/arrival airports of a flight,
-                          fetched from the public adsbdb route API on
-                          first request and cached on disk (24h by
-                          default). Unknown routes are cached briefly so
-                          they are not refetched on every refresh.
+                          fetched from the FlightAware live flight page
+                          (current schedule per callsign) on first
+                          request, with the adsbdb route API as fallback,
+                          and cached on disk (24h by default). Unknown
+                          routes are cached briefly so they are not
+                          refetched on every refresh.
   GET /health             returns 200 when the server is up.
 
 Install (systemd):
@@ -68,7 +70,8 @@ DEFAULT_TEMPLATE = "https://www.flightaware.com/images/airline_logos/180px/{icao
 DEFAULT_CACHE_DIR = "/var/cache/dump1090-airline-logos"
 CLIENT_CACHE_SECONDS = 86400      # how long browsers may reuse a response
 DEFAULT_404_TTL_SECONDS = 7 * 86400  # retry unknown operators after this
-ROUTE_TEMPLATE = "https://api.adsbdb.com/v0/callsign/{callsign}"
+ROUTE_TEMPLATE = "https://www.flightaware.com/live/flight/{callsign}"
+ROUTE_FALLBACK_TEMPLATE = "https://api.adsbdb.com/v0/callsign/{callsign}"
 DEFAULT_ROUTE_TTL_SECONDS = 24 * 3600  # revalidate routes after this
 ROUTE_CLIENT_CACHE_SECONDS = 3600  # how long browsers may reuse a route
 # Some logo hosts reject library user agents; use a browser-like one.
@@ -77,13 +80,14 @@ USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36
 
 class LogoCacheServer(ThreadingHTTPServer):
     def __init__(self, address, handler, cache_dir, logo_template, max_age_seconds,
-                 not_found_ttl_seconds, route_template, route_ttl_seconds):
+                 not_found_ttl_seconds, route_template, route_fallback_template, route_ttl_seconds):
         super().__init__(address, handler)
         self.cache_dir = cache_dir
         self.logo_template = logo_template
         self.max_age_seconds = max_age_seconds
         self.not_found_ttl_seconds = not_found_ttl_seconds
         self.route_template = route_template
+        self.route_fallback_template = route_fallback_template
         self.route_ttl_seconds = route_ttl_seconds
 
 
@@ -187,24 +191,33 @@ class LogoCacheHandler(BaseHTTPRequestHandler):
         url = self.cache_server.route_template.replace("{callsign}", callsign)
         request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
         try:
-            with urllib.request.urlopen(request, timeout=15) as response:
-                data = json.loads(response.read().decode("utf-8", "replace"))
-        except urllib.error.HTTPError as error:
-            if error.code == 404:
-                self._mark_missing(miss_file)
-                self._send_route_404("MISS (404)")
-                return
-            self._server_error("route upstream error: %s" % error.code)
-            return
-        except Exception as error:  # network errors, timeouts, bad JSON
+            with urllib.request.urlopen(request, timeout=20) as response:
+                html = response.read().decode("utf-8", "replace")
+        except Exception as error:  # network errors, timeouts
             self._server_error("route upstream error: %s" % error)
             return
 
-        flightroute = (data.get("response") or {}).get("flightroute") or {}
-        origin = flightroute.get("origin") or {}
-        destination = flightroute.get("destination") or {}
-        dep = origin.get("icao_code")
-        arr = destination.get("icao_code")
+        dep, arr, dep_lat, dep_lon, arr_lat, arr_lon = self._parse_flightaware_route(html)
+        if not dep or not arr:
+            # Fall back to the adsbdb route API
+            fallback_url = self.cache_server.route_fallback_template.replace("{callsign}", callsign)
+            request = urllib.request.Request(fallback_url, headers={"User-Agent": USER_AGENT})
+            try:
+                with urllib.request.urlopen(request, timeout=15) as response:
+                    data = json.loads(response.read().decode("utf-8", "replace"))
+                flightroute = (data.get("response") or {}).get("flightroute") or {}
+                origin = flightroute.get("origin") or {}
+                destination = flightroute.get("destination") or {}
+                dep = origin.get("icao_code")
+                arr = destination.get("icao_code")
+                dep_lat = origin.get("latitude")
+                dep_lon = origin.get("longitude")
+                arr_lat = destination.get("latitude")
+                arr_lon = destination.get("longitude")
+            except Exception as error:
+                self._server_error("route fallback error: %s" % error)
+                return
+
         if not dep or not arr:
             self._mark_missing(miss_file)
             self._send_route_404("MISS (incomplete)")
@@ -216,10 +229,10 @@ class LogoCacheHandler(BaseHTTPRequestHandler):
         payload = json.dumps({
             "dep": dep,
             "arr": arr,
-            "depLat": origin.get("latitude"),
-            "depLon": origin.get("longitude"),
-            "arrLat": destination.get("latitude"),
-            "arrLon": destination.get("longitude"),
+            "depLat": dep_lat,
+            "depLon": dep_lon,
+            "arrLat": arr_lat,
+            "arrLon": arr_lon,
         }).encode("utf-8")
         if os.path.exists(miss_file):
             try:
@@ -252,6 +265,34 @@ class LogoCacheHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "public, max-age=%d" % ROUTE_CLIENT_CACHE_SECONDS)
         self.send_header("X-Cache", cache_state)
         self.end_headers()
+
+    def _parse_flightaware_route(self, html):
+        """Extract origin/destination ICAO codes and coordinates from a
+        FlightAware flight page. Returns
+        (dep, arr, dep_lat, dep_lon, arr_lat, arr_lon)."""
+        dep = None
+        arr = None
+        match = re.search(r"setTargeting\('origin', '([A-Z]{4})'\)", html)
+        if match:
+            dep = match.group(1)
+        match = re.search(r"setTargeting\('destination', '([A-Z]{4})'\)", html)
+        if match:
+            arr = match.group(1)
+
+        dep_lat = dep_lon = arr_lat = arr_lon = None
+        match = re.search(r'"origin":\{[^}]*"coord":\[([-\d.]+),([-\d.]+)\][^}]*"icao":"([A-Z]{4})"', html)
+        if match:
+            if dep is None:
+                dep = match.group(3)
+            dep_lat = float(match.group(2))
+            dep_lon = float(match.group(1))
+        match = re.search(r'"destination":\{[^}]*"coord":\[([-\d.]+),([-\d.]+)\][^}]*"icao":"([A-Z]{4})"', html)
+        if match:
+            if arr is None:
+                arr = match.group(3)
+            arr_lat = float(match.group(2))
+            arr_lon = float(match.group(1))
+        return dep, arr, dep_lat, dep_lon, arr_lat, arr_lon
 
     def _is_fresh(self, path, ttl_seconds):
         if ttl_seconds <= 0:
@@ -321,14 +362,16 @@ def main():
     parser.add_argument("--not-found-ttl", type=int, default=DEFAULT_404_TTL_SECONDS,
                         help="remember unknown operators for this many seconds (default: %d)" % DEFAULT_404_TTL_SECONDS)
     parser.add_argument("--route-template", default=ROUTE_TEMPLATE,
-                        help="URL template for routes; {callsign} is replaced (default: adsbdb)")
+                        help="URL template for routes; {callsign} is replaced (default: FlightAware flight page)")
+    parser.add_argument("--route-fallback-template", default=ROUTE_FALLBACK_TEMPLATE,
+                        help="URL template used when the primary route source fails (default: adsbdb)")
     parser.add_argument("--route-ttl", type=int, default=DEFAULT_ROUTE_TTL_SECONDS,
                         help="revalidate cached routes after this many seconds (default: %d)" % DEFAULT_ROUTE_TTL_SECONDS)
     args = parser.parse_args()
 
     server = LogoCacheServer((args.host, args.port), LogoCacheHandler,
                             args.cache_dir, args.logo_template, args.max_age, args.not_found_ttl,
-                            args.route_template, args.route_ttl)
+                            args.route_template, args.route_fallback_template, args.route_ttl)
 
     os.makedirs(args.cache_dir, exist_ok=True)
     print("logo cache server on http://%s:%d (cache: %s)" % (args.host, args.port, args.cache_dir))

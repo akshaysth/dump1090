@@ -129,3 +129,10 @@ aircraft's ground track and the airports' coordinates (included in the
 route payload) -- when the aircraft is heading the reverse way, the
 departure and arrival are swapped. Routes without coordinates (older
 cache entries) are shown as stored.
+
+The route source is the FlightAware live flight page for the callsign
+(the current schedule, so route changes are picked up within the cache
+TTL), with the adsbdb route API as an automatic fallback when the page
+cannot be parsed. Both cache servers (logo-cache-proxy.py and
+data-proxy.py) implement this; the source URL is configurable via
+--route-template / --route-fallback-template.

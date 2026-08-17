@@ -42,7 +42,8 @@ from typing import cast
 
 DEFAULT_SERVE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public_html"))
 LOGO_TEMPLATE = "https://www.flightaware.com/images/airline_logos/180px/{icao}.png"
-ROUTE_TEMPLATE = "https://api.adsbdb.com/v0/callsign/{callsign}"
+ROUTE_TEMPLATE = "https://www.flightaware.com/live/flight/{callsign}"
+ROUTE_FALLBACK_TEMPLATE = "https://api.adsbdb.com/v0/callsign/{callsign}"
 DEFAULT_ROUTE_TTL_SECONDS = 24 * 3600  # revalidate cached routes after this
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
@@ -145,37 +146,77 @@ class DataProxyHandler(http.server.BaseHTTPRequestHandler):
         url = ROUTE_TEMPLATE.replace("{callsign}", callsign)
         try:
             req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-            with urllib.request.urlopen(req, timeout=15) as response:
-                data = json.loads(response.read().decode("utf-8", "replace"))
-        except urllib.error.HTTPError as error:
-            if error.code == 404:
-                open(miss, "wb").close()
-                self.send_error(404)
-                return
+            with urllib.request.urlopen(req, timeout=20) as response:
+                html = response.read().decode("utf-8", "replace")
+        except Exception as error:
+            sys.stderr.write("route fetch error %s: %s\n" % (callsign, error))
             self.send_error(502)
             return
-        flightroute = (data.get("response") or {}).get("flightroute") or {}
-        dep = (flightroute.get("origin") or {}).get("icao_code")
-        arr = (flightroute.get("destination") or {}).get("icao_code")
+        dep, arr, dep_lat, dep_lon, arr_lat, arr_lon = self._parse_flightaware_route(html)
+        if not dep or not arr:
+            # Fall back to the adsbdb route API
+            fallback_url = ROUTE_FALLBACK_TEMPLATE.replace("{callsign}", callsign)
+            try:
+                req = urllib.request.Request(fallback_url, headers={"User-Agent": USER_AGENT})
+                with urllib.request.urlopen(req, timeout=15) as response:
+                    data = json.loads(response.read().decode("utf-8", "replace"))
+                flightroute = (data.get("response") or {}).get("flightroute") or {}
+                origin = flightroute.get("origin") or {}
+                destination = flightroute.get("destination") or {}
+                dep = origin.get("icao_code")
+                arr = destination.get("icao_code")
+                dep_lat = origin.get("latitude")
+                dep_lon = origin.get("longitude")
+                arr_lat = destination.get("latitude")
+                arr_lon = destination.get("longitude")
+            except Exception as error:
+                sys.stderr.write("route fallback error %s: %s\n" % (callsign, error))
+                self.send_error(502)
+                return
         if not dep or not arr:
             open(miss, "wb").close()
             self.send_error(404)
             return
-        origin = flightroute.get("origin") or {}
-        destination = flightroute.get("destination") or {}
         payload = json.dumps({
             "dep": dep,
             "arr": arr,
-            "depLat": origin.get("latitude"),
-            "depLon": origin.get("longitude"),
-            "arrLat": destination.get("latitude"),
-            "arrLon": destination.get("longitude"),
+            "depLat": dep_lat,
+            "depLon": dep_lon,
+            "arrLat": arr_lat,
+            "arrLon": arr_lon,
         }).encode("utf-8")
         tmp = cache + ".tmp"
         with open(tmp, "wb") as handle:
             handle.write(payload)
         os.replace(tmp, cache)
         self.send_bytes(200, payload, "application/json")
+
+    def _parse_flightaware_route(self, html):
+        """Extract origin/destination ICAO codes and coordinates from a
+        FlightAware flight page. Returns
+        (dep, arr, dep_lat, dep_lon, arr_lat, arr_lon)."""
+        dep = None
+        arr = None
+        match = re.search(r"setTargeting\('origin', '([A-Z]{4})'\)", html)
+        if match:
+            dep = match.group(1)
+        match = re.search(r"setTargeting\('destination', '([A-Z]{4})'\)", html)
+        if match:
+            arr = match.group(1)
+        dep_lat = dep_lon = arr_lat = arr_lon = None
+        match = re.search(r'"origin":\{[^}]*"coord":\[([-\d.]+),([-\d.]+)\][^}]*"icao":"([A-Z]{4})"', html)
+        if match:
+            if dep is None:
+                dep = match.group(3)
+            dep_lat = float(match.group(2))
+            dep_lon = float(match.group(1))
+        match = re.search(r'"destination":\{[^}]*"coord":\[([-\d.]+),([-\d.]+)\][^}]*"icao":"([A-Z]{4})"', html)
+        if match:
+            if arr is None:
+                arr = match.group(3)
+            arr_lat = float(match.group(2))
+            arr_lon = float(match.group(1))
+        return dep, arr, dep_lat, dep_lon, arr_lat, arr_lon
 
     def send_bytes(self, status, data, ctype):
         self.send_response(status)
