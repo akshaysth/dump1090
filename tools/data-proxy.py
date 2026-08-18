@@ -20,7 +20,10 @@
 #   tools/data-proxy.py --remote http://172.16.1.135:8000
 #
 # then open http://127.0.0.1:8080/ in a browser. To let other machines
-# reach it, add --host 0.0.0.0.
+# on the network reach it, bind to all interfaces and use the host's
+# LAN address:
+#   tools/data-proxy.py --host 0.0.0.0 --remote http://172.16.1.135:8000
+#   # other hosts: http://<this-host-lan-ip>:8080/
 #
 # Copyright (c) 2026 dump1090 contributors
 #
