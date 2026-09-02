@@ -118,7 +118,7 @@ cache directory, logo URL template, cache expiry).
 
 The webmap supports light, dark and system themes. "system" follows the
 operating system's dark/light preference and updates live when the OS
-theme changes. The map base layer switches to the CARTO dark basemap
+theme changes. The map base layer switches to the ESRI dark gray canvas
 with the dark theme. The choice is made in the settings panel (Theme
 selector) and remembered in local storage; the default is set by
 `Theme` in config.js ("system", "dark" or "light").

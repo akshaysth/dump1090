@@ -1381,7 +1381,7 @@ label.sourceCheckboxChecked div.sourceCheckbox {
 /* Dark theme -------------------------------------------------------
    Applied via body.dark-mode (see script.js applyTheme). The theme
    follows the Theme setting: system / dark / light. The map base
-   layer switches to the CARTO dark basemap with it. */
+   layer switches to the ESRI dark gray canvas basemap with it. */
 
 body.dark-mode {
     background-color: #121212;

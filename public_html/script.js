@@ -1211,7 +1211,7 @@ function ringStyleForAlt(altitude) {
 
 
 function createSiteCircleFeatures() {
-    const darkMaps = ['carto_dark_nolabels', 'carto_dark_all', 'esri_satellite'];
+    const darkMaps = ['esri_dark_gray', 'esri_satellite'];
 
     if (darkMaps.includes(MapType)) {
         var SiteCircleColor = '#FFFFFF'
@@ -2326,22 +2326,22 @@ function applyTheme() {
 }
 
 // Keep the map base layer consistent with the theme. The dark theme
-// uses the CARTO dark basemap; the light theme restores the map the
-// user had selected before switching to dark.
+// uses the ESRI dark gray canvas basemap; the light theme restores the
+// map the user had selected before switching to dark.
 function syncThemeMap(dark) {
     if (typeof layerGroup === 'undefined' || layerGroup === null) {
         return;
     }
     var current = (typeof MapType !== 'undefined' && MapType !== null) ? MapType : '';
     if (dark) {
-        if (current !== 'carto_dark_all' && current !== 'carto_dark_nolabels') {
+        if (current !== 'esri_dark_gray') {
             if (current.length > 0) {
                 localStorage.setItem('lightMapType', current);
             }
-            setBaseLayerByName('carto_dark_all');
+            setBaseLayerByName('esri_dark_gray');
         }
     } else {
-        if (current === 'carto_dark_all' || current === 'carto_dark_nolabels') {
+        if (current === 'esri_dark_gray') {
             var lightMap = localStorage.getItem('lightMapType');
             setBaseLayerByName(lightMap || 'osm');
         }
