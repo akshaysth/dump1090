@@ -487,22 +487,26 @@ function initialize() {
         toggleTISBAircraft(false);
         refreshDataSourceFilters();
 
-        // Get 978 receiver metadata if present
-        $.ajax({ url: 'data-978/receiver.json',
-                timeout: 5000,
-                cache: false,
-                dataType: 'json' })
+        // Get 978 receiver metadata if present. Only probed when a
+        // SkyAware978 sidecar is expected (SkyAware978Enabled in config.js);
+        // otherwise the probe would 404 on every page load.
+        if (SkyAware978Enabled) {
+                $.ajax({ url: 'data-978/receiver.json',
+                        timeout: 5000,
+                        cache: false,
+                        dataType: 'json' })
 
-                .done(function(data) {
-                        console.log('SkyAware978 enabled')
-                        UAT_Enabled = true;
-                        UatPositionHistorySize = data.history;
-                })
+                        .done(function(data) {
+                                console.log('SkyAware978 enabled')
+                                UAT_Enabled = true;
+                                UatPositionHistorySize = data.history;
+                        })
 
-                .fail(function(data) {
-                        console.warn('Error reading SkyAware978 receiver.json. SkyAware978 may be disabled')
-                        UAT_Enabled = false;
-                });
+                        .fail(function(data) {
+                                console.warn('Error reading SkyAware978 receiver.json. SkyAware978 may be disabled')
+                                UAT_Enabled = false;
+                        });
+        }
 
         // Get receiver metadata, reconfigure using it, then continue
         // with initialization
@@ -512,7 +516,7 @@ function initialize() {
                  dataType: 'json' })
 
                 .done(function(data) {
-                        console.log('dump1090-fa enabled');
+                        debugLog('dump1090-fa enabled');
                         ADSB_Enabled = true;
                         if (typeof data.lat !== "undefined") {
                                 SiteShow = true;
@@ -641,6 +645,15 @@ var CurrentHistoryFetch = 0;
 var PositionHistoryBuffer = [];
 var HistoryItemsReturned = 0;
 var TotalPositionHistorySize = 0;
+
+// Verbose startup logging to the browser console. Enable with
+// DebugLogging = true in config.js.
+function debugLog() {
+        if (DebugLogging) {
+                console.log.apply(console, arguments);
+        }
+}
+
 function start_load_history() {
         let url = new URL(window.location.href);
         let params = new URLSearchParams(url.search);
@@ -649,7 +662,7 @@ function start_load_history() {
         TotalPositionHistorySize = PositionHistorySize + UatPositionHistorySize;
         if (TotalPositionHistorySize > 0 && params.get('nohistory') !== 'true') {
                 $("#loader_progress").attr('max', TotalPositionHistorySize);
-                console.log("Starting to load history (" + TotalPositionHistorySize + " items)");
+                debugLog("Starting to load history (" + TotalPositionHistorySize + " items)");
                 // Load dump1090 history.json files
                 for (var i = 0; i < PositionHistorySize; i++) {
                         load_history_item(i, 'data');
@@ -669,7 +682,7 @@ function start_load_history() {
 // Loads a history json file
 function load_history_item(i, source) {
         var historyfile = 'history_' + i + '.json';
-        console.log('Loading ' + source + ' ' + historyfile);
+        debugLog('Loading ' + source + ' ' + historyfile);
         $("#loader_progress").attr('value', CurrentHistoryFetch);
 
         var receiver_source = (source == "data-978" ? "skyaware978" : "dump1090-fa");
@@ -703,23 +716,23 @@ function load_history_item(i, source) {
 function end_load_history() {
         $("#loader").addClass("hidden");
 
-        console.log("Done loading history");
+        debugLog("Done loading history");
 
         if (PositionHistoryBuffer.length > 0) {
                 var now, last=0;
 
                 // Sort history by timestamp
-                console.log("Sorting history");
+                debugLog("Sorting history");
                 PositionHistoryBuffer.sort(function(x,y) { return (x.now - y.now); });
 
                 // Process history
                 for (var h = 0; h < PositionHistoryBuffer.length; ++h) {
                         now = PositionHistoryBuffer[h].now;
-                        console.log("Applying history " + (h + 1) + "/" + PositionHistoryBuffer.length + " at: " + now);
+                        debugLog("Applying history " + (h + 1) + "/" + PositionHistoryBuffer.length + " at: " + now);
                         processReceiverUpdate(PositionHistoryBuffer[h], PositionHistoryBuffer[h].source);
 
                         // Update track
-                        console.log("Updating tracks at: " + now);
+                        debugLog("Updating tracks at: " + now);
                         for (var i = 0; i < PlanesOrdered.length; ++i) {
                                 var plane = PlanesOrdered[i];
                                 plane.updateTrack(now, last);
@@ -729,7 +742,7 @@ function end_load_history() {
                 }
 
                 // Final pass to update all planes to their latest state
-                console.log("Final history cleanup pass");
+                debugLog("Final history cleanup pass");
                 for (var i = 0; i < PlanesOrdered.length; ++i) {
                         var plane = PlanesOrdered[i];
                         plane.updateTick(now);
@@ -740,7 +753,7 @@ function end_load_history() {
 
         PositionHistoryBuffer = null;
 
-        console.log("Completing init");
+        debugLog("Completing init");
 
         refreshTableInfo();
         refreshSelected();
@@ -1170,32 +1183,36 @@ function initialize_map() {
         //
         // NB: altitudes are in _meters_, you can specify a list of altitudes
 
-        // kick off an ajax request that will add the rings when it's done
-        var request = $.ajax({ url: 'upintheair.json',
-                               timeout: 5000,
-                               cache: true,
-                               dataType: 'json' });
-        request.done(function(data) {
-                for (var i = 0; i < data.rings.length; ++i) {
-                        var geom = new ol.geom.LineString([]);
-                        var points = data.rings[i].points;
-                        if (points.length > 0) {
-                                for (var j = 0; j < points.length; ++j) {
-                                        geom.appendCoordinate([ points[j][1], points[j][0] ]);
+        // kick off an ajax request that will add the rings when it's done.
+        // Only when upintheair.json has been deployed; see UpInTheAirRings
+        // in config.js.
+        if (UpInTheAirRings) {
+                var request = $.ajax({ url: 'upintheair.json',
+                                       timeout: 5000,
+                                       cache: true,
+                                       dataType: 'json' });
+                request.done(function(data) {
+                        for (var i = 0; i < data.rings.length; ++i) {
+                                var geom = new ol.geom.LineString([]);
+                                var points = data.rings[i].points;
+                                if (points.length > 0) {
+                                        for (var j = 0; j < points.length; ++j) {
+                                                geom.appendCoordinate([ points[j][1], points[j][0] ]);
+                                        }
+                                        geom.appendCoordinate([ points[0][1], points[0][0] ]);
+                                        geom.transform('EPSG:4326', 'EPSG:3857');
+
+                                        var feature = new ol.Feature(geom);
+                                        feature.setStyle(ringStyleForAlt(data.rings[i].alt));
+                                        StaticFeatures.push(feature);
                                 }
-                                geom.appendCoordinate([ points[0][1], points[0][0] ]);
-                                geom.transform('EPSG:4326', 'EPSG:3857');
-
-                                var feature = new ol.Feature(geom);
-                                feature.setStyle(ringStyleForAlt(data.rings[i].alt));
-                                StaticFeatures.push(feature);
                         }
-                }
-        });
+                });
 
-        request.fail(function(jqxhr, status, error) {
-                // no rings available, do nothing
-        });
+                request.fail(function(jqxhr, status, error) {
+                        // no rings available, do nothing
+                });
+        }
 }
 
 
@@ -2672,8 +2689,14 @@ function toggleLayer(element, layer) {
 	});
 }
 
-// check status.json if it has a serial number for a flightfeeder
+// check status.json if it has a serial number for a flightfeeder.
+// Only probed when the server serves /status.json; see
+// FeederStatusEnabled in config.js.
 function flightFeederCheck() {
+    if (!FeederStatusEnabled) {
+        return;
+    }
+
     $.ajax('/status.json', {
         success: function(data) {
             if (data.type === "flightfeeder") {
@@ -2685,6 +2708,12 @@ function flightFeederCheck() {
 }
 
 function setStatsLink() {
+        if (!FeederStatusEnabled) {
+                // no /status.json on this server; no stats page to link to
+                $('#stats_page_button').hide();
+                return;
+        }
+
         $.ajax('/status.json', {
                 success: function(data) {
                     if (data.unclaimed_feeder_id) {

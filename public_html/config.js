@@ -100,6 +100,12 @@ DefaultSiteCirclesCount = 3;
 DefaultSiteCirclesBaseDistance = 100;
 DefaultSiteCirclesInterval = 50;
 
+// Fetch upintheair.json from the same directory to draw the
+// heywhatsthat.com terrain-limit rings. Enable only after the file
+// has been deployed (see the notes in script.js for how to generate
+// it); when disabled the page skips the request entirely.
+UpInTheAirRings = false;
+
 // Controls page title, righthand pane when nothing is selected
 PageName = "PiAware SkyAware";
 
@@ -108,6 +114,21 @@ ShowFlags = true;
 
 // Path to country flags (can be a relative or absolute URL; include a trailing /)
 FlagPath = "flags-tiny/";
+
+// -- Feeder status integration ----------------------------------
+// Some deployments (PiAware / FlightFeeder images) serve a
+// /status.json identifying the feeder; when present the page shows
+// the FlightFeeder branding and a stats / claim button. Standalone
+// receivers do not serve /status.json, and enabling this without it
+// shows a 404 in the browser console on every page load.
+FeederStatusEnabled = false;
+
+// -- SkyAware978 (UAT) integration ------------------------------
+// When a SkyAware978 sidecar serves /data-978/ alongside the feed,
+// the webmap probes data-978/receiver.json at startup to enable UAT
+// support. Leave disabled when no 978 feed is deployed to avoid a
+// 404 probe on every page load.
+SkyAware978Enabled = false;
 
 // -- Airline logo settings -------------------------------------
 // When enabled, hovering over an aircraft's ident in the aircraft
@@ -170,3 +191,8 @@ DefaultMaxAltitudeFilter = 65000
 DefaultMinAltitudeFilter = 0
 DefaultMaxSpeedFilter = 1000
 DefaultMinSpeedFilter = 0
+
+// -- Debug settings ---------------------------------------------
+// Set to true to print verbose startup and history-loading
+// information to the browser console.
+DebugLogging = false;

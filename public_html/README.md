@@ -136,3 +136,22 @@ TTL), with the adsbdb route API as an automatic fallback when the page
 cannot be parsed. Both cache servers (logo-cache-proxy.py and
 data-proxy.py) implement this; the source URL is configurable via
 --route-template / --route-fallback-template.
+
+
+## Optional integrations and console noise
+
+Some optional integrations probe for files that only exist in certain
+deployments. Each is disabled by default in config.js; when disabled
+the probe request is skipped entirely, so a standard receiver shows no
+404s in the browser console:
+
+ - `FeederStatusEnabled` probes `/status.json` for the feeder identity
+   (PiAware / FlightFeeder images) to pick the FlightFeeder branding
+   and the FlightAware stats / claim button.
+ - `SkyAware978Enabled` probes `data-978/receiver.json` to auto-enable
+   the UAT feed served by a SkyAware978 sidecar.
+ - `UpInTheAirRings` fetches `upintheair.json` for the heywhatsthat.com
+   terrain-limit rings.
+
+Debug output from startup and history loading is off by default;
+`DebugLogging = true` in config.js brings it back.
